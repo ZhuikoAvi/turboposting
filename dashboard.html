@@ -5,6 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Личный кабинет - ТурбоПостинг</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .sheet-card {
+            transition: transform 0.2s;
+        }
+        .sheet-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .status-badge {
+            font-size: 0.7em;
+        }
+    </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
@@ -18,6 +30,7 @@
     <div class="container mt-4">
         <h2>Добро пожаловать в личный кабинет!</h2>
         
+        <!-- Блок с информацией о пользователе -->
         <div class="row mt-4">
             <div class="col-md-6">
                 <div class="card">
@@ -34,7 +47,25 @@
                     <div class="card-body">
                         <h5 class="card-title">📊 Google Таблицы</h5>
                         <p class="card-text">Создавайте таблицы для автоматизации</p>
-                        <button class="btn btn-outline-primary" onclick="createGoogleSheet()">Создать таблицу</button>
+                        <button class="btn btn-outline-primary" onclick="createGoogleSheet()" id="createSheetBtn">
+                            Создать таблицу
+                        </button>
+                        <div id="sheetProgress" class="mt-2" style="display: none;">
+                            <div class="spinner-border spinner-border-sm" role="status"></div>
+                            <span class="ms-2">Создаем таблицу...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Блок с созданными таблицами -->
+        <div class="row mt-4" id="sheetsSection" style="display: none;">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">📋 Ваши таблицы</h5>
+                        <div id="sheetsList"></div>
                     </div>
                 </div>
             </div>
@@ -72,6 +103,11 @@
             const user = JSON.parse(currentUser);
             document.getElementById('userEmail').textContent = user.email;
             document.getElementById('walletBalance').textContent = user.wallet + ' руб.';
+            
+            // Показываем созданные таблицы, если они есть
+            if (user.sheets && user.sheets.length > 0) {
+                displaySheets(user.sheets);
+            }
         }
 
         function logout() {
@@ -94,16 +130,115 @@
             alert('Баланс пополнен на 100 руб.!');
         }
 
-        function createGoogleSheet() {
-            alert('Функция "Создать Google таблицу" скоро будет доступна!');
+        async function createGoogleSheet() {
+            const btn = document.getElementById('createSheetBtn');
+            const progress = document.getElementById('sheetProgress');
+            
+            btn.disabled = true;
+            progress.style.display = 'block';
+            
+            try {
+                // Временная заглушка - создаем фейковую таблицу
+                // Позже заменим на реальный вызов Google Apps Script
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                const sheetUrl = 'https://docs.google.com/spreadsheets/d/example_' + Date.now();
+                const sheetId = 'sheet_' + Date.now();
+                
+                // Сохраняем информацию о таблице
+                const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+                if (!currentUser.sheets) currentUser.sheets = [];
+                
+                currentUser.sheets.push({
+                    url: sheetUrl,
+                    id: sheetId,
+                    name: 'ТурбоПостинг - ' + new Date().toLocaleDateString('ru-RU'),
+                    created: new Date().toISOString(),
+                    status: 'active'
+                });
+                
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                // Сохраняем в постоянное хранилище
+                const userKey = 'user_' + currentUser.email;
+                const permanentUser = JSON.parse(localStorage.getItem(userKey)) || currentUser;
+                permanentUser.sheets = currentUser.sheets;
+                localStorage.setItem(userKey, JSON.stringify(permanentUser));
+                
+                // Показываем таблицу в интерфейсе
+                displaySheets(currentUser.sheets);
+                
+                alert('Google таблица создана!\nСсылка: ' + sheetUrl + '\n\n(Это демо-версия. Реальная интеграция с Google Таблицами будет настроена позже)');
+                
+            } catch (error) {
+                alert('Ошибка создания таблицы: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                progress.style.display = 'none';
+            }
+        }
+
+        function displaySheets(sheets) {
+            const sheetsSection = document.getElementById('sheetsSection');
+            const sheetsList = document.getElementById('sheetsList');
+            
+            sheetsSection.style.display = 'block';
+            sheetsList.innerHTML = '';
+            
+            sheets.forEach((sheet, index) => {
+                const sheetCard = document.createElement('div');
+                sheetCard.className = 'card sheet-card mb-2';
+                sheetCard.innerHTML = `
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-title mb-1">${sheet.name}</h6>
+                                <small class="text-muted">Создана: ${new Date(sheet.created).toLocaleDateString('ru-RU')}</small>
+                                <span class="badge bg-success status-badge ms-2">${sheet.status}</span>
+                            </div>
+                            <div>
+                                <a href="${sheet.url}" target="_blank" class="btn btn-sm btn-outline-primary me-1">
+                                    Открыть
+                                </a>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteSheet(${index})">
+                                    Удалить
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                sheetsList.appendChild(sheetCard);
+            });
+        }
+
+        function deleteSheet(index) {
+            if (confirm('Удалить эту таблицу?')) {
+                const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+                currentUser.sheets.splice(index, 1);
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                // Обновляем постоянное хранилище
+                const userKey = 'user_' + currentUser.email;
+                const permanentUser = JSON.parse(localStorage.getItem(userKey));
+                if (permanentUser) {
+                    permanentUser.sheets = currentUser.sheets;
+                    localStorage.setItem(userKey, JSON.stringify(permanentUser));
+                }
+                
+                displaySheets(currentUser.sheets);
+                
+                if (currentUser.sheets.length === 0) {
+                    document.getElementById('sheetsSection').style.display = 'none';
+                }
+            }
         }
 
         function connectYandexDisk() {
-            alert('Функция "Подключить Яндекс.Диск" скоро будет доступна!');
+            alert('Функция "Подключить Яндекс.Диск" скоро будет доступна!\n\nМы настроим OAuth авторизацию для доступа к вашему Яндекс.Диску.');
         }
 
         function connectAvito() {
-            alert('Функция "Подключить Авито" скоро будет доступна!');
+            alert('Функция "Подключить Авито" скоро будет доступна!\n\nМы настроим интеграцию с API Авито для автоматической выгрузки объявлений.');
         }
     </script>
 </body>
