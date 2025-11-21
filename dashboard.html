@@ -6,16 +6,21 @@
     <title>Личный кабинет - ТурбоПостинг</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        .sheet-card {
+        .sheet-card, .integration-card {
             transition: transform 0.2s;
         }
-        .sheet-card:hover {
+        .sheet-card:hover, .integration-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         .status-badge {
             font-size: 0.7em;
         }
+        .integration-status {
+            font-size: 0.9em;
+        }
+        .connected { color: #198754; }
+        .disconnected { color: #6c757d; }
     </style>
 </head>
 <body>
@@ -71,23 +76,70 @@
             </div>
         </div>
 
+        <!-- Блок интеграций -->
         <div class="row mt-4">
             <div class="col-md-6">
-                <div class="card">
+                <div class="card integration-card">
                     <div class="card-body">
                         <h5 class="card-title">📷 Яндекс.Диск</h5>
                         <p class="card-text">Подключите для загрузки фото</p>
-                        <button class="btn btn-outline-primary" onclick="connectYandexDisk()">Подключить</button>
+                        
+                        <div id="yandexStatus" class="integration-status disconnected mb-2">
+                            ❌ Не подключен
+                        </div>
+                        
+                        <div id="yandexInfo" style="display: none;" class="mb-2">
+                            <small class="text-muted" id="yandexUserInfo"></small>
+                        </div>
+                        
+                        <button class="btn btn-outline-primary" onclick="connectYandexDisk()" id="yandexBtn">
+                            Подключить
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="disconnectYandex()" id="yandexDisconnectBtn" style="display: none;">
+                            Отключить
+                        </button>
+                        
+                        <!-- Демо-функции после подключения -->
+                        <div id="yandexFunctions" style="display: none;" class="mt-3">
+                            <h6>Демо-функции:</h6>
+                            <button class="btn btn-sm btn-success me-2" onclick="testYandexUpload()">
+                                📤 Тест загрузки
+                            </button>
+                            <button class="btn btn-sm btn-info" onclick="viewYandexFiles()">
+                                📁 Показать файлы
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
             
             <div class="col-md-6">
-                <div class="card">
+                <div class="card integration-card">
                     <div class="card-body">
                         <h5 class="card-title">🔄 Авито</h5>
                         <p class="card-text">Настройте автовыгрузку</p>
-                        <button class="btn btn-outline-primary" onclick="connectAvito()">Подключить</button>
+                        
+                        <div id="avitoStatus" class="integration-status disconnected mb-2">
+                            ❌ Не подключен
+                        </div>
+                        
+                        <button class="btn btn-outline-primary" onclick="connectAvito()" id="avitoBtn">
+                            Подключить
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="disconnectAvito()" id="avitoDisconnectBtn" style="display: none;">
+                            Отключить
+                        </button>
+                        
+                        <!-- Демо-функции после подключения -->
+                        <div id="avitoFunctions" style="display: none;" class="mt-3">
+                            <h6>Демо-функции:</h6>
+                            <button class="btn btn-sm btn-success me-2" onclick="testAvitoUpload()">
+                                🚀 Тест выгрузки
+                            </button>
+                            <button class="btn btn-sm btn-warning" onclick="viewAvitoStats()">
+                                📊 Статистика
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -116,24 +168,66 @@
         </div>
     </div>
 
+    <!-- Модальное окно для Яндекс.Диска -->
+    <div class="modal fade" id="yandexModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Подключение Яндекс.Диска</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Для подключения Яндекс.Диска вам необходимо:</p>
+                    <ol>
+                        <li>Авторизоваться в Яндекс</li>
+                        <li>Предоставить доступ к Яндекс.Диску</li>
+                        <li>Подтвердить разрешения</li>
+                    </ol>
+                    
+                    <div class="mb-3">
+                        <label for="yandexLogin" class="form-label">Логин Яндекс:</label>
+                        <input type="text" class="form-control" id="yandexLogin" placeholder="ваш.login">
+                    </div>
+                    <div class="mb-3">
+                        <label for="yandexPassword" class="form-label">Пароль:</label>
+                        <input type="password" class="form-control" id="yandexPassword" placeholder="Пароль">
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <small>Это демо-версия. В реальном приложении будет использоваться OAuth авторизация.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="completeYandexAuth()">Авторизоваться</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Подключаем Bootstrap JS для модальных окон -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        // Проверяем авторизацию
-        const currentUser = localStorage.getItem('currentUser');
-        if (!currentUser) {
-            window.location.href = 'login.html';
-        } else {
-            const user = JSON.parse(currentUser);
-            document.getElementById('userEmail').textContent = user.email;
-            document.getElementById('walletBalance').textContent = user.wallet + ' руб.';
-            
-            // Показываем созданные таблицы, если они есть
-            if (user.sheets && user.sheets.length > 0) {
-                displaySheets(user.sheets);
+        // Проверяем авторизацию и загружаем данные
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentUser = localStorage.getItem('currentUser');
+            if (!currentUser) {
+                window.location.href = 'login.html';
+            } else {
+                const user = JSON.parse(currentUser);
+                document.getElementById('userEmail').textContent = user.email;
+                document.getElementById('walletBalance').textContent = user.wallet + ' руб.';
+                
+                // Показываем созданные таблицы, если они есть
+                if (user.sheets && user.sheets.length > 0) {
+                    displaySheets(user.sheets);
+                }
+                
+                // Проверяем статус интеграций
+                checkIntegrationStatus(user);
             }
-        }
+        });
 
         function logout() {
             localStorage.removeItem('currentUser');
@@ -156,7 +250,6 @@
         }
 
         function showCreateSheetModal() {
-            // Показываем модальное окно для ввода названия
             const modal = new bootstrap.Modal(document.getElementById('sheetNameModal'));
             modal.show();
         }
@@ -177,14 +270,11 @@
             modal.hide();
             
             try {
-                // Имитируем создание таблицы (2 секунды)
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 
-                // Генерируем демо-ссылку
                 const sheetUrl = 'https://docs.google.com/spreadsheets/d/example_' + Date.now();
                 const sheetId = 'sheet_' + Date.now();
                 
-                // Сохраняем информацию о таблице
                 const currentUser = JSON.parse(localStorage.getItem('currentUser'));
                 if (!currentUser.sheets) currentUser.sheets = [];
                 
@@ -199,16 +289,14 @@
                 
                 localStorage.setItem('currentUser', JSON.stringify(currentUser));
                 
-                // Сохраняем в постоянное хранилище
                 const userKey = 'user_' + currentUser.email;
                 const permanentUser = JSON.parse(localStorage.getItem(userKey)) || currentUser;
                 permanentUser.sheets = currentUser.sheets;
                 localStorage.setItem(userKey, JSON.stringify(permanentUser));
                 
-                // Показываем таблицу в интерфейсе
                 displaySheets(currentUser.sheets);
                 
-                alert(`Google таблица "${sheetName}" создана!\n\nСсылка: ${sheetUrl}\n\n(Это демо-версия. Реальная интеграция с Google Таблицами будет настроена позже)`);
+                alert(`Google таблица "${sheetName}" создана!\n\nСсылка: ${sheetUrl}`);
                 
             } catch (error) {
                 alert('Ошибка создания таблицы: ' + error.message);
@@ -263,7 +351,6 @@
                 currentUser.sheets.splice(index, 1);
                 localStorage.setItem('currentUser', JSON.stringify(currentUser));
                 
-                // Обновляем постоянное хранилище
                 const userKey = 'user_' + currentUser.email;
                 const permanentUser = JSON.parse(localStorage.getItem(userKey));
                 if (permanentUser) {
@@ -281,12 +368,186 @@
             }
         }
 
+        // Функции для Яндекс.Диска
         function connectYandexDisk() {
-            alert('Функция "Подключить Яндекс.Диск" скоро будет доступна!\n\nМы настроим OAuth авторизацию для доступа к вашему Яндекс.Диску.');
+            const modal = new bootstrap.Modal(document.getElementById('yandexModal'));
+            modal.show();
         }
 
+        function completeYandexAuth() {
+            const login = document.getElementById('yandexLogin').value;
+            const password = document.getElementById('yandexPassword').value;
+            
+            if (!login || !password) {
+                alert('Введите логин и пароль Яндекс');
+                return;
+            }
+            
+            // Имитируем процесс авторизации
+            const modal = bootstrap.Modal.getInstance(document.getElementById('yandexModal'));
+            modal.hide();
+            
+            // Показываем индикатор загрузки
+            const btn = document.getElementById('yandexBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Подключение...';
+            
+            setTimeout(() => {
+                // Сохраняем данные о подключении
+                const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+                currentUser.yandexDisk = {
+                    connected: true,
+                    login: login,
+                    connectedAt: new Date().toISOString(),
+                    token: 'demo_token_' + Date.now()
+                };
+                
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                // Сохраняем в постоянное хранилище
+                const userKey = 'user_' + currentUser.email;
+                const permanentUser = JSON.parse(localStorage.getItem(userKey)) || currentUser;
+                permanentUser.yandexDisk = currentUser.yandexDisk;
+                localStorage.setItem(userKey, JSON.stringify(permanentUser));
+                
+                // Обновляем интерфейс
+                updateYandexStatus(currentUser.yandexDisk);
+                
+                alert('Яндекс.Диск успешно подключен!');
+                
+            }, 2000);
+        }
+
+        function disconnectYandex() {
+            if (confirm('Отключить Яндекс.Диск?')) {
+                const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+                delete currentUser.yandexDisk;
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                const userKey = 'user_' + currentUser.email;
+                const permanentUser = JSON.parse(localStorage.getItem(userKey));
+                if (permanentUser) {
+                    delete permanentUser.yandexDisk;
+                    localStorage.setItem(userKey, JSON.stringify(permanentUser));
+                }
+                
+                updateYandexStatus(null);
+                alert('Яндекс.Диск отключен');
+            }
+        }
+
+        function updateYandexStatus(yandexData) {
+            const statusEl = document.getElementById('yandexStatus');
+            const btn = document.getElementById('yandexBtn');
+            const disconnectBtn = document.getElementById('yandexDisconnectBtn');
+            const infoEl = document.getElementById('yandexInfo');
+            const functionsEl = document.getElementById('yandexFunctions');
+            
+            if (yandexData && yandexData.connected) {
+                statusEl.innerHTML = '✅ Подключен';
+                statusEl.className = 'integration-status connected mb-2';
+                btn.style.display = 'none';
+                disconnectBtn.style.display = 'inline-block';
+                infoEl.style.display = 'block';
+                infoEl.innerHTML = `<small class="text-muted">Логин: ${yandexData.login} • Подключен: ${new Date(yandexData.connectedAt).toLocaleDateString('ru-RU')}</small>`;
+                functionsEl.style.display = 'block';
+            } else {
+                statusEl.innerHTML = '❌ Не подключен';
+                statusEl.className = 'integration-status disconnected mb-2';
+                btn.style.display = 'inline-block';
+                btn.disabled = false;
+                btn.innerHTML = 'Подключить';
+                disconnectBtn.style.display = 'none';
+                infoEl.style.display = 'none';
+                functionsEl.style.display = 'none';
+            }
+        }
+
+        function testYandexUpload() {
+            alert('Демо: Загрузка файла на Яндекс.Диск\n\nВ реальном приложении здесь будет загрузка фото из таблиц на Яндекс.Диск');
+        }
+
+        function viewYandexFiles() {
+            alert('Демо: Просмотр файлов на Яндекс.Диске\n\nЗдесь будет отображение файлов из вашего Яндекс.Диска');
+        }
+
+        // Функции для Авито
         function connectAvito() {
-            alert('Функция "Подключить Авито" скоро будет доступна!\n\nМы настроим интеграцию с API Авито для автоматической выгрузки объявлений.');
+            alert('Подключение Авито\n\nВ реальном приложении здесь будет OAuth авторизация Авито API');
+            
+            // Демо-подключение
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            currentUser.avito = {
+                connected: true,
+                connectedAt: new Date().toISOString(),
+                account: 'demo_avito_account'
+            };
+            
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            
+            const userKey = 'user_' + currentUser.email;
+            const permanentUser = JSON.parse(localStorage.getItem(userKey)) || currentUser;
+            permanentUser.avito = currentUser.avito;
+            localStorage.setItem(userKey, JSON.stringify(permanentUser));
+            
+            updateAvitoStatus(currentUser.avito);
+        }
+
+        function disconnectAvito() {
+            if (confirm('Отключить Авито?')) {
+                const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+                delete currentUser.avito;
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                const userKey = 'user_' + currentUser.email;
+                const permanentUser = JSON.parse(localStorage.getItem(userKey));
+                if (permanentUser) {
+                    delete permanentUser.avito;
+                    localStorage.setItem(userKey, JSON.stringify(permanentUser));
+                }
+                
+                updateAvitoStatus(null);
+                alert('Авито отключен');
+            }
+        }
+
+        function updateAvitoStatus(avitoData) {
+            const statusEl = document.getElementById('avitoStatus');
+            const btn = document.getElementById('avitoBtn');
+            const disconnectBtn = document.getElementById('avitoDisconnectBtn');
+            const functionsEl = document.getElementById('avitoFunctions');
+            
+            if (avitoData && avitoData.connected) {
+                statusEl.innerHTML = '✅ Подключен';
+                statusEl.className = 'integration-status connected mb-2';
+                btn.style.display = 'none';
+                disconnectBtn.style.display = 'inline-block';
+                functionsEl.style.display = 'block';
+            } else {
+                statusEl.innerHTML = '❌ Не подключен';
+                statusEl.className = 'integration-status disconnected mb-2';
+                btn.style.display = 'inline-block';
+                disconnectBtn.style.display = 'none';
+                functionsEl.style.display = 'none';
+            }
+        }
+
+        function testAvitoUpload() {
+            alert('Демо: Тест выгрузки на Авито\n\nВ реальном приложении здесь будет автоматическая выгрузка объявлений из таблиц на Авито');
+        }
+
+        function viewAvitoStats() {
+            alert('Демо: Статистика Авито\n\nЗдесь будет статистика по вашим объявлениям на Авито');
+        }
+
+        // Проверка статуса интеграций при загрузке
+        function checkIntegrationStatus(user) {
+            if (user.yandexDisk) {
+                updateYandexStatus(user.yandexDisk);
+            }
+            if (user.avito) {
+                updateAvitoStatus(user.avito);
+            }
         }
     </script>
 </body>
