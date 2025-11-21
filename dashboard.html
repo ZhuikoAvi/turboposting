@@ -47,7 +47,7 @@
                     <div class="card-body">
                         <h5 class="card-title">📊 Google Таблицы</h5>
                         <p class="card-text">Создавайте таблицы для автоматизации</p>
-                        <button class="btn btn-outline-primary" onclick="createGoogleSheet()" id="createSheetBtn">
+                        <button class="btn btn-outline-primary" onclick="showCreateSheetModal()" id="createSheetBtn">
                             Создать таблицу
                         </button>
                         <div id="sheetProgress" class="mt-2" style="display: none;">
@@ -94,6 +94,31 @@
         </div>
     </div>
 
+    <!-- Модальное окно для названия таблицы -->
+    <div class="modal fade" id="sheetNameModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Название таблицы</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="sheetName" class="form-label">Введите название для новой таблицы:</label>
+                        <input type="text" class="form-control" id="sheetName" placeholder="Например: Объявления Авито" value="ТурбоПостинг">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="createGoogleSheet()">Создать</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Подключаем Bootstrap JS для модальных окон -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
     <script>
         // Проверяем авторизацию
         const currentUser = localStorage.getItem('currentUser');
@@ -130,18 +155,32 @@
             alert('Баланс пополнен на 100 руб.!');
         }
 
+        function showCreateSheetModal() {
+            // Показываем модальное окно для ввода названия
+            const modal = new bootstrap.Modal(document.getElementById('sheetNameModal'));
+            modal.show();
+        }
+
         async function createGoogleSheet() {
+            const sheetName = document.getElementById('sheetName').value.trim();
+            if (!sheetName) {
+                alert('Пожалуйста, введите название таблицы');
+                return;
+            }
+
             const btn = document.getElementById('createSheetBtn');
             const progress = document.getElementById('sheetProgress');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('sheetNameModal'));
             
             btn.disabled = true;
             progress.style.display = 'block';
+            modal.hide();
             
             try {
-                // Временная заглушка - создаем фейковую таблицу
-                // Позже заменим на реальный вызов Google Apps Script
+                // Имитируем создание таблицы (2 секунды)
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 
+                // Генерируем демо-ссылку
                 const sheetUrl = 'https://docs.google.com/spreadsheets/d/example_' + Date.now();
                 const sheetId = 'sheet_' + Date.now();
                 
@@ -152,9 +191,10 @@
                 currentUser.sheets.push({
                     url: sheetUrl,
                     id: sheetId,
-                    name: 'ТурбоПостинг - ' + new Date().toLocaleDateString('ru-RU'),
+                    name: sheetName,
                     created: new Date().toISOString(),
-                    status: 'active'
+                    status: 'active',
+                    columns: ['Название', 'Описание', 'Цена', 'Категория', 'Фото', 'Статус']
                 });
                 
                 localStorage.setItem('currentUser', JSON.stringify(currentUser));
@@ -168,7 +208,7 @@
                 // Показываем таблицу в интерфейсе
                 displaySheets(currentUser.sheets);
                 
-                alert('Google таблица создана!\nСсылка: ' + sheetUrl + '\n\n(Это демо-версия. Реальная интеграция с Google Таблицами будет настроена позже)');
+                alert(`Google таблица "${sheetName}" создана!\n\nСсылка: ${sheetUrl}\n\n(Это демо-версия. Реальная интеграция с Google Таблицами будет настроена позже)`);
                 
             } catch (error) {
                 alert('Ошибка создания таблицы: ' + error.message);
@@ -187,22 +227,27 @@
             
             sheets.forEach((sheet, index) => {
                 const sheetCard = document.createElement('div');
-                sheetCard.className = 'card sheet-card mb-2';
+                sheetCard.className = 'card sheet-card mb-3';
                 sheetCard.innerHTML = `
                     <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
                                 <h6 class="card-title mb-1">${sheet.name}</h6>
-                                <small class="text-muted">Создана: ${new Date(sheet.created).toLocaleDateString('ru-RU')}</small>
-                                <span class="badge bg-success status-badge ms-2">${sheet.status}</span>
+                                <small class="text-muted d-block">Создана: ${new Date(sheet.created).toLocaleDateString('ru-RU')}</small>
+                                <div class="mt-2">
+                                    <small><strong>Колонки:</strong> ${sheet.columns ? sheet.columns.join(', ') : 'Название, Описание, Цена, Категория, Фото, Статус'}</small>
+                                </div>
                             </div>
-                            <div>
-                                <a href="${sheet.url}" target="_blank" class="btn btn-sm btn-outline-primary me-1">
-                                    Открыть
-                                </a>
-                                <button class="btn btn-sm btn-outline-danger" onclick="deleteSheet(${index})">
-                                    Удалить
-                                </button>
+                            <div class="d-flex flex-column">
+                                <span class="badge bg-success status-badge mb-2">${sheet.status}</span>
+                                <div>
+                                    <a href="${sheet.url}" target="_blank" class="btn btn-sm btn-outline-primary me-1">
+                                        Открыть
+                                    </a>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteSheet(${index})">
+                                        Удалить
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -214,6 +259,7 @@
         function deleteSheet(index) {
             if (confirm('Удалить эту таблицу?')) {
                 const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+                const sheetName = currentUser.sheets[index].name;
                 currentUser.sheets.splice(index, 1);
                 localStorage.setItem('currentUser', JSON.stringify(currentUser));
                 
@@ -230,6 +276,8 @@
                 if (currentUser.sheets.length === 0) {
                     document.getElementById('sheetsSection').style.display = 'none';
                 }
+                
+                alert(`Таблица "${sheetName}" удалена`);
             }
         }
 
